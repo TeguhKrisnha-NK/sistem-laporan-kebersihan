@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
+import Image from 'next/image' // ✅ Import Image
 
 export default function Navbar() {
   const router = useRouter()
@@ -14,7 +15,6 @@ export default function Navbar() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  // Cek Status User saat Navbar dimuat
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -33,7 +33,7 @@ export default function Navbar() {
     await supabase.auth.signOut()
     setIsLoggedIn(false)
     setUserEmail(null)
-    router.push('/login') // Redirect ke login setelah logout
+    router.push('/login')
   }
 
   const getLinkClass = (path: string) => {
@@ -43,7 +43,6 @@ export default function Navbar() {
       : "text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition"
   }
 
-  // Cek apakah user adalah ADMIN UTAMA
   const isAdmin = userEmail === 'teguhkrisnha@gmail.com'
 
   return (
@@ -51,8 +50,17 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           
-          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
-            <span className="text-2xl">🏫</span>
+          {/* ✅ GANTI LOGO DI SINI */}
+          <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition">
+            <div className="relative w-10 h-10">
+              <Image 
+                src="/logo-sman2.png" 
+                alt="Logo SMAN 2 Negara" 
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
             <span className="font-bold text-gray-900 text-lg hidden md:block">Laporan Kebersihan</span>
           </Link>
 
@@ -61,18 +69,16 @@ export default function Navbar() {
             <Link href="/dashboard" className={getLinkClass('/dashboard')}>Dashboard</Link>
             <Link href="/laporan" className={getLinkClass('/laporan')}>Input Laporan</Link>
             <Link href="/ranking" className={getLinkClass('/ranking')}>Ranking</Link>
-            
-            {/* HANYA TAMPIL JIKA ADMIN */}
             {isAdmin && (
               <Link href="/admin" className={getLinkClass('/admin')}>Admin Panel</Link>
             )}
           </div>
 
-          {/* Tombol Kanan (Login / Logout) */}
+          {/* Tombol Kanan */}
           <div className="hidden md:flex items-center gap-3">
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 font-medium">
+                <span className="text-xs text-gray-500 font-medium hidden lg:block">
                   Halo, {isAdmin ? 'Admin' : 'Petugas'}
                 </span>
                 <button 
@@ -108,11 +114,9 @@ export default function Navbar() {
             <Link href="/dashboard" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Dashboard</Link>
             <Link href="/laporan" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Input Laporan</Link>
             <Link href="/ranking" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Ranking</Link>
-            
             {isAdmin && (
               <Link href="/admin" className="block px-3 py-2 rounded-md text-base font-medium text-purple-600 font-bold bg-purple-50">Admin Panel</Link>
             )}
-
             <div className="pt-4 mt-2 border-t border-gray-100">
               {isLoggedIn ? (
                 <button onClick={handleLogout} className="w-full text-left block px-3 py-2 rounded-md text-base font-bold text-red-600 hover:bg-red-50">Logout</button>
