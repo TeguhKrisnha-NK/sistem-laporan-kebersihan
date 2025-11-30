@@ -9,7 +9,7 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  // 2. Setup Supabase Client untuk Middleware
+  // 2. Setup Supabase Client untuk Middleware (Menangani Cookies)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -44,11 +44,11 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // 4. Proteksi Halaman (Redirect jika belum login)
+  // Perhatikan: '/laporan' SUDAH DIHAPUS dari sini agar bisa diakses publik
   if (!user && (
     request.nextUrl.pathname.startsWith('/dashboard') ||
     request.nextUrl.pathname.startsWith('/admin') ||
-    request.nextUrl.pathname.startsWith('/ranking') ||
-    request.nextUrl.pathname.startsWith('/laporan')
+    request.nextUrl.pathname.startsWith('/ranking')
   )) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
@@ -57,5 +57,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/ranking/:path*', '/laporan/:path*'],
+  // HANYA proteksi halaman /admin. 
+  // Hapus /dashboard dan /ranking dari sini agar jadi PUBLIK.
+  matcher: ['/admin/:path*'],
 }
