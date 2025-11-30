@@ -1,27 +1,22 @@
-import type { NextConfig } from 'next'
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // reactCompiler: true,  // COMMENT TEMPORARILY
-  compress: true,
-
-  experimental: {
-    optimizePackageImports: [
-      '@supabase/supabase-js',
-      'date-fns',
-      'react-hot-toast',
-      'zustand',
-      'clsx',
-    ],
-  },
-
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**.supabase.co',
+        hostname: 'res.cloudinary.com', // Izin untuk Cloudinary
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.supabase.co', // Izin untuk Supabase Storage (Foto lama)
+        port: '',
+        pathname: '/**',
       },
     ],
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;

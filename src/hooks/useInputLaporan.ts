@@ -12,7 +12,7 @@ export function useInputLaporan() {
   const searchParams = useSearchParams()
   const supabase = createClient()
   
-  // Ambil nama petugas dari URL
+  // Ambil nama petugas dari URL (jika ada)
   const officerName = searchParams.get('petugas') 
 
   const [classes, setClasses] = useState<Class[]>([])
@@ -26,7 +26,7 @@ export function useInputLaporan() {
     fotos: [] as File[], 
   })
 
-  // Fetch Data Kelas
+  // 1. Fetch Data Kelas dari Supabase
   useEffect(() => {
     const fetchClasses = async () => {
       setLoading(true)
@@ -35,6 +35,7 @@ export function useInputLaporan() {
         if (error) throw error
         setClasses(data || [])
       } catch (error) {
+        console.error('Error fetching classes:', error)
         toast.error('Gagal mengambil data kelas')
       } finally {
         setLoading(false)
@@ -43,57 +44,91 @@ export function useInputLaporan() {
     fetchClasses()
   }, [supabase])
 
-  // Handle Upload Foto ke Storage
-  const uploadPhotos = async (files: File[]) => {
+  // 2. Fungsi Upload ke Cloudinary (Dengan Debugging Lengkap)
+  const uploadToCloudinary = async (files: File[]) => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET
+
+    // Cek apakah konfigurasi .env sudah terbaca
+    if (!cloudName || !uploadPreset) {
+      console.error("❌ Config Missing:", { cloudName, uploadPreset })
+      throw new Error('Konfigurasi Cloudinary (Cloud Name/Preset) belum terbaca. Coba restart server.')
+    }
+
     const uploadPromises = files.map(async (file) => {
-      const fileExt = file.name.split('.').pop()?.toLowerCase()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`
-      const filePath = `public_uploads/${fileName}`
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('upload_preset', uploadPreset) // Preset harus mode "Unsigned"
+      formData.append('folder', 'laporan_sekolah')   // Folder di Cloudinary
 
-      const { error: uploadError } = await supabase.storage
-        .from('reports')
-        .upload(filePath, file, { contentType: file.type })
+      try {
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+          {
+            method: 'POST',
+            body: formData,
+          }
+        )
 
-      if (uploadError) throw uploadError
+        const data = await res.json()
 
-      const { data } = supabase.storage.from('reports').getPublicUrl(filePath)
-      return data.publicUrl
+        if (!res.ok) {
+          // 🔥 Log Error Detail dari Cloudinary ke Console
+          console.error("❌ Cloudinary Upload Error:", data)
+          throw new Error(data.error?.message || 'Gagal upload gambar ke Cloudinary')
+        }
+
+        return data.secure_url // Ambil URL gambar yang berhasil diupload
+      } catch (err) {
+        console.error("❌ Fetch Error:", err)
+        throw err
+      }
     })
 
     return await Promise.all(uploadPromises)
   }
 
-  // Handle Submit Form
+  // 3. Handle Submit Form
   const submitReport = async () => {
     setSubmitting(true)
+    const toastId = toast.loading('Sedang mengirim laporan...')
+
     try {
-      // Validasi
+      // Validasi Input
       if (!formData.classId) throw new Error('Pilih kelas terlebih dahulu')
       if (formData.status === 'Kotor' && !formData.deskripsi.trim()) throw new Error('Deskripsi wajib diisi jika status Kotor')
 
-      // Upload Foto (Jika ada)
+      // Proses Upload Foto (Jika ada)
       let uploadedUrls: string[] = []
       if (formData.fotos.length > 0) {
-        uploadedUrls = await uploadPhotos(formData.fotos)
+        uploadedUrls = await uploadToCloudinary(formData.fotos)
       }
 
-      // Insert ke Database
+      // Insert Data ke Supabase
       const { error } = await supabase.from('reports').insert([{
         class_id: formData.classId,
+        // Gabungkan nama petugas ke deskripsi agar tersimpan
         deskripsi: officerName ? `[Petugas: ${officerName}] ${formData.deskripsi}` : formData.deskripsi,
         status: formData.status,
-        foto_url: uploadedUrls.length > 0 ? uploadedUrls : null,
+        foto_url: uploadedUrls.length > 0 ? uploadedUrls : null, // Simpan array link foto
         tanggal: new Date().toISOString().split('T')[0],
         semester: getCurrentSemester(),
+        // user_id dibiarkan null (karena sudah diset Nullable di database)
       }])
 
-      if (error) throw error
+      if (error) {
+        console.error("❌ Supabase Insert Error:", error)
+        throw error
+      }
 
-      toast.success('Laporan berhasil dikirim!')
-      router.push('/dashboard')
+      toast.success('Laporan berhasil dikirim!', { id: toastId })
+      
+      // Redirect ke Dashboard Publik agar user bisa melihat laporannya masuk
+      router.push('/dashboard') 
+
     } catch (error: any) {
       console.error(error)
-      toast.error(error.message || 'Gagal menyimpan laporan')
+      toast.error(error.message || 'Gagal menyimpan laporan', { id: toastId })
     } finally {
       setSubmitting(false)
     }
