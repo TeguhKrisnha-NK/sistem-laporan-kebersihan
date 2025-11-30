@@ -5,9 +5,9 @@ import { createClient } from '@/lib/supabase'
 import type { Report, Class } from '@/types'
 import toast from 'react-hot-toast'
 
-// Kita buat tipe data khusus biar tidak error TypeScript saat baca relasi classes
-interface DashboardReport extends Report {
-  classes?: Class | null;
+// PENGGANTI (BARU & LEBIH AMAN)
+interface DashboardReport extends Omit<Report, 'classes'> {
+  classes: Class | null; // Kita paksa boleh null
 }
 
 export default function DashboardPage() {
