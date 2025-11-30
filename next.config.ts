@@ -2,7 +2,6 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   // reactCompiler: true,  // COMMENT TEMPORARILY
-  swcMinify: true,
   compress: true,
 
   experimental: {
