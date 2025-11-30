@@ -1,0 +1,94 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2024": true,
+    "node": true
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  },
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./tsconfig.json",
+    "ecmaVersion": "latest",
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "sourceType": "module"
+  },
+  "ignorePatterns": [
+    "node_modules",
+    ". next",
+    "build",
+    "dist",
+    "out",
+    "public",
+    "coverage"
+  ],
+  "extends": [
+    "next",
+    "next/core-web-vitals",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:tailwindcss/recommended",
+    "prettier"
+  ],
+  "plugins": [
+    "react",
+    "react-hooks",
+    "@typescript-eslint",
+    "tailwindcss",
+    "jsdoc",
+    "prettier"
+  ],
+  "rules": {
+    "prettier/prettier": [
+      "warn",
+      {
+        "semi": true,
+        "trailingComma": "all",
+        "singleQuote": true,
+        "printWidth": 100,
+        "tabWidth": 2,
+        "plugins": ["prettier-plugin-tailwindcss"]
+      }
+    ],
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "eqeqeq": ["warn", "always"],
+    "no-var": "error",
+    "prefer-const": "warn",
+    "@typescript-eslint/explicit-function-return-type": [
+      "warn",
+      {
+        "allowExpressions": true,
+        "allowTypedFunctionExpressions": true
+      }
+    ],
+    "@typescript-eslint/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-only",
+        "fixStyle": "separate-type-imports"
+      }
+    ],
+    "react/prop-types": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/no-array-index-key": "error",
+    "react/self-closing-comp": "warn",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "@next/next/no-img-element": "off"
+  }
+}
