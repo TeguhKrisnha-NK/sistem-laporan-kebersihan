@@ -12,7 +12,7 @@ export function useInputLaporan() {
   const searchParams = useSearchParams()
   const supabase = createClient()
   
-  // Ambil nama petugas dari URL (jika ada)
+  // Ambil nama petugas dari URL (jika diklik dari halaman depan)
   const officerName = searchParams.get('petugas') 
 
   const [classes, setClasses] = useState<Class[]>([])
@@ -21,12 +21,12 @@ export function useInputLaporan() {
 
   const [formData, setFormData] = useState({
     classId: '',
-    status: 'Bersih',
+    status: 'Bersih', // Default
     deskripsi: '',
     fotos: [] as File[], 
   })
 
-  // 1. Fetch Data Kelas dari Supabase
+  // 1. Fetch Data Kelas
   useEffect(() => {
     const fetchClasses = async () => {
       setLoading(true)
@@ -35,7 +35,7 @@ export function useInputLaporan() {
         if (error) throw error
         setClasses(data || [])
       } catch (error) {
-        console.error('Error fetching classes:', error)
+        console.error(error)
         toast.error('Gagal mengambil data kelas')
       } finally {
         setLoading(false)
@@ -44,91 +44,81 @@ export function useInputLaporan() {
     fetchClasses()
   }, [supabase])
 
-  // 2. Fungsi Upload ke Cloudinary (Dengan Debugging Lengkap)
+  // 2. Fungsi Upload ke Cloudinary
   const uploadToCloudinary = async (files: File[]) => {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET
 
-    // Cek apakah konfigurasi .env sudah terbaca
     if (!cloudName || !uploadPreset) {
-      console.error("❌ Config Missing:", { cloudName, uploadPreset })
-      throw new Error('Konfigurasi Cloudinary (Cloud Name/Preset) belum terbaca. Coba restart server.')
+      throw new Error('Konfigurasi Cloudinary belum diset.')
     }
 
     const uploadPromises = files.map(async (file) => {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('upload_preset', uploadPreset) // Preset harus mode "Unsigned"
-      formData.append('folder', 'laporan_sekolah')   // Folder di Cloudinary
+      formData.append('upload_preset', uploadPreset)
+      formData.append('folder', 'laporan_sekolah')
 
-      try {
-        const res = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-          {
-            method: 'POST',
-            body: formData,
-          }
-        )
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        { method: 'POST', body: formData }
+      )
 
-        const data = await res.json()
-
-        if (!res.ok) {
-          // 🔥 Log Error Detail dari Cloudinary ke Console
-          console.error("❌ Cloudinary Upload Error:", data)
-          throw new Error(data.error?.message || 'Gagal upload gambar ke Cloudinary')
-        }
-
-        return data.secure_url // Ambil URL gambar yang berhasil diupload
-      } catch (err) {
-        console.error("❌ Fetch Error:", err)
-        throw err
-      }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || 'Gagal upload gambar')
+      
+      return data.secure_url
     })
 
     return await Promise.all(uploadPromises)
   }
 
-  // 3. Handle Submit Form
-  const submitReport = async () => {
+  // 3. Handle Submit (Menerima Override Skor & Deskripsi dari UI)
+  const submitReport = async (scoreOverride?: number, descOverride?: string) => {
     setSubmitting(true)
-    const toastId = toast.loading('Sedang mengirim laporan...')
+    const toastId = toast.loading('Mengirim laporan...')
 
     try {
-      // Validasi Input
+      // Validasi
       if (!formData.classId) throw new Error('Pilih kelas terlebih dahulu')
-      if (formData.status === 'Kotor' && !formData.deskripsi.trim()) throw new Error('Deskripsi wajib diisi jika status Kotor')
-
-      // Proses Upload Foto (Jika ada)
+      
+      // Upload Foto
       let uploadedUrls: string[] = []
       if (formData.fotos.length > 0) {
         uploadedUrls = await uploadToCloudinary(formData.fotos)
       }
 
-      // Insert Data ke Supabase
+      // Siapkan Data Deskripsi (Gabung dengan Nama Petugas jika ada)
+      // Prioritas: Deskripsi Final dari UI (yang ada list pelanggaran) -> Deskripsi State -> Kosong
+      const finalDescText = descOverride || formData.deskripsi
+      const finalDescription = officerName 
+        ? `[Petugas: ${officerName}] ${finalDescText}` 
+        : finalDescText
+
+      // Insert ke Database
       const { error } = await supabase.from('reports').insert([{
         class_id: formData.classId,
-        // Gabungkan nama petugas ke deskripsi agar tersimpan
-        deskripsi: officerName ? `[Petugas: ${officerName}] ${formData.deskripsi}` : formData.deskripsi,
+        deskripsi: finalDescription,
         status: formData.status,
-        foto_url: uploadedUrls.length > 0 ? uploadedUrls : null, // Simpan array link foto
-        tanggal: new Date().toISOString().split('T')[0],
+        
+        // 🔥 PENTING: Simpan Skor (Default 480 jika tidak ada hitungan pelanggaran)
+        score: scoreOverride !== undefined ? scoreOverride : 480,
+        
+        foto_url: uploadedUrls.length > 0 ? uploadedUrls : null,
+        tanggal: new Date().toISOString().split('T')[0], // Tanggal hari ini YYYY-MM-DD
         semester: getCurrentSemester(),
-        // user_id dibiarkan null (karena sudah diset Nullable di database)
       }])
 
-      if (error) {
-        console.error("❌ Supabase Insert Error:", error)
-        throw error
-      }
+      if (error) throw error
 
-      toast.success('Laporan berhasil dikirim!', { id: toastId })
+      toast.success('Laporan berhasil disimpan!', { id: toastId })
       
-      // Redirect ke Dashboard Publik agar user bisa melihat laporannya masuk
-      router.push('/dashboard') 
+      // Redirect ke Dashboard
+      router.push('/dashboard')
 
     } catch (error: any) {
       console.error(error)
-      toast.error(error.message || 'Gagal menyimpan laporan', { id: toastId })
+      toast.error(error.message || 'Gagal menyimpan', { id: toastId })
     } finally {
       setSubmitting(false)
     }

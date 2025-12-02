@@ -1,13 +1,51 @@
 'use client'
 
+import { useEffect, useState } from 'react' // Tambahkan useEffect & useState
+import { useRouter } from 'next/navigation' // Tambahkan useRouter
+import { createClient } from '@/lib/supabase' // Tambahkan createClient
 import { useRankingLogic } from '@/hooks/useRankingLogic'
 import RankingList from '@/components/ranking/RankingList'
+import toast from 'react-hot-toast' // Tambahkan toast
 
 export default function RankingPage() {
+  const router = useRouter()
+  const supabase = createClient()
   const { ranking, loading, semester, setSemester, year, setYear } = useRankingLogic()
+  const [isAuthorized, setIsAuthorized] = useState(false) // State untuk cek hak akses
 
-  // ✅ UBAH BAGIAN INI: Menetapkan tahun 2025 - 2028
+  // ✅ CEK APAKAH ADMIN
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      // Ganti dengan email admin kamu
+      if (user.email !== 'teguhkrisnha@gmail.com') {
+        toast.error('AKSES DITOLAK: Hanya Admin yang boleh melihat Ranking.')
+        router.push('/dashboard') // Tendang user biasa ke dashboard
+      } else {
+        setIsAuthorized(true) // Izinkan akses
+      }
+    }
+    
+    checkAdmin()
+  }, [supabase, router])
+
+  const currentYear = new Date().getFullYear()
   const years = [2025, 2026, 2027, 2028]
+
+  // Tampilkan loading atau kosong jika belum terverifikasi admin
+  if (!isAuthorized) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
@@ -25,7 +63,6 @@ export default function RankingPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    
                     {/* Dropdown Tahun */}
                     <div className="relative">
                       <select 
@@ -37,7 +74,6 @@ export default function RankingPage() {
                           <option key={y} value={y}>Tahun {y}</option>
                         ))}
                       </select>
-                      {/* Panah Custom */}
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                         <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                       </div>

@@ -2,14 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // 1. Buat response awal
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
 
-  // 2. Setup Supabase Client untuk Middleware (Menangani Cookies)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -19,7 +17,6 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // Update request cookies & response cookies
           cookiesToSet.forEach(({ name, value }) => 
             request.cookies.set(name, value)
           )
@@ -38,17 +35,14 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // 3. Cek User Login
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // 4. Proteksi Halaman (Redirect jika belum login)
-  // Perhatikan: '/laporan' SUDAH DIHAPUS dari sini agar bisa diakses publik
+  // Proteksi Halaman Admin & Ranking
   if (!user && (
-    request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/admin') ||
-    request.nextUrl.pathname.startsWith('/ranking')
+    request.nextUrl.pathname.startsWith('/admin') || 
+    request.nextUrl.pathname.startsWith('/ranking') // ✅ Tambahkan ini
   )) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
@@ -57,7 +51,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // HANYA proteksi halaman /admin. 
-  // Hapus /dashboard dan /ranking dari sini agar jadi PUBLIK.
-  matcher: ['/admin/:path*'],
+  // ✅ Tambahkan '/ranking/:path*' ke matcher
+  matcher: [
+    '/admin/:path*', 
+    '/ranking/:path*'
+  ],
 }
