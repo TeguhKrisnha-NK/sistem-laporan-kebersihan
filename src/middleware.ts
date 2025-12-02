@@ -2,12 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // 1. Create initial response
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
 
+  // 2. Setup Supabase Client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -35,15 +37,19 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // 3. Check User Session
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Proteksi Halaman Admin & Ranking
-  if (!user && (
-    request.nextUrl.pathname.startsWith('/admin') || 
-    request.nextUrl.pathname.startsWith('/ranking') // ✅ Tambahkan ini
-  )) {
+  // 4. Route Protection
+  // Only protect specific routes. 
+  // '/' and '/laporan' are PUBLIC. '/dashboard', '/admin', '/ranking' are PROTECTED.
+  
+  const protectedPaths = ['/dashboard', '/admin', '/ranking']
+  const isProtected = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
+
+  if (!user && isProtected) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -51,9 +57,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // ✅ Tambahkan '/ranking/:path*' ke matcher
   matcher: [
-    '/admin/:path*', 
-    '/ranking/:path*'
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
