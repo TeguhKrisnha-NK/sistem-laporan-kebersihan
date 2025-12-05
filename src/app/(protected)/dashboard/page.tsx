@@ -10,7 +10,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
-      {/* Ingat: Navbar sudah ada di Layout, jadi tidak perlu dipanggil di sini */}
+      {/* Navbar sudah ada di Layout (src/app/(protected)/layout.tsx) */}
 
       <main className="max-w-7xl mx-auto px-4 py-8 fade-in space-y-6">
         
